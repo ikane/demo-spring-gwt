@@ -2,10 +2,12 @@ package org.ikane.demospringjwt;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.DirectEncrypter;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,6 +21,7 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Date;
 import java.util.UUID;
 
 @EnableWebSecurity
@@ -60,32 +63,43 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         System.out.println("-------------------------------------------");
         System.out.println("public key rsa:" + jwk.toRSAPublicKey());
 
-        generateJwtToken();
+        //**********************************************************
 
-        //SecretKey secretKey;
-        return NimbusJwtDecoder.withPublicKey(jwk.toRSAPublicKey()).build();
-    }
+        // RSA signatures require a public and private RSA key pair, the public key
+        // must be made known to the JWS recipient in order to verify the signatures
+        RSAKey rsaJWK = new RSAKeyGenerator(2048)
+                .keyID("123")
+                .generate();
+        RSAKey rsaPublicJWK = rsaJWK.toPublicJWK();
 
-    private void generateJwtToken() throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .claim("email", "sanjay@example.com")
-                .claim("name", "Sanjay Patel")
+        // Create RSA-signer with the private key
+        JWSSigner signer = new RSASSASigner(rsaJWK);
+
+        // Prepare JWT with claims set
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject("alice")
+                .issuer("https://c2id.com")
+                .expirationTime(new Date(new Date().getTime() + 60 * 1000 * 4))
                 .build();
 
-        Payload payload = new Payload(claims.toJSONObject());
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(rsaJWK.getKeyID()).build(),
+                claimsSet);
 
-        //we are going to use direct encryption with A128CBC_HS256 algorithm. So, the next step is to create an encrypter for it
-        JWEHeader header = new JWEHeader(JWEAlgorithm.DIR, EncryptionMethod.A128CBC_HS256);
+        // Compute the RSA signature
+        signedJWT.sign(signer);
 
-        //The secret above is an aes-128-cbc key, generated using an online utility.
-        String secret = "841D8A6C80CBA4FCAD32D5367C18C53B";
+        // To serialize to compact form, produces something like
+        // eyJhbGciOiJSUzI1NiJ9.SW4gUlNBIHdlIHRydXN0IQ.IRMQENi4nJyp4er2L
+        // mZq3ivwoAjqa1uUkSBKFIX7ATndFF5ivnt-m8uApHO4kfIFOrW7w2Ezmlg3Qd
+        // maXlS9DhN0nUk_hGI3amEjkKd0BWYCB8vfUbUv0XGjQip78AI4z1PrFRNidm7
+        // -jPDm5Iq0SZnjKjCNS5Q15fokXZc8u0A
+        String s = signedJWT.serialize();
 
-        byte[] secretKey = secret.getBytes();
-        DirectEncrypter encrypter = new DirectEncrypter(secretKey);
-        JWEObject jweObject = new JWEObject(header, payload);
-        jweObject.encrypt(encrypter);
-        String token = jweObject.serialize();
+        System.out.println("Serialized Signed JWT:" + s);
 
-        System.out.println(token);
+
+        return NimbusJwtDecoder.withPublicKey(rsaPublicJWK.toRSAPublicKey()).build();
     }
+
 }
