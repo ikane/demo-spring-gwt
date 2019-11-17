@@ -1,14 +1,11 @@
 package org.ikane.demospringjwt;
 
 import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,13 +15,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
-import javax.crypto.SecretKey;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.UUID;
 
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
@@ -62,13 +55,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // must be made known to the JWS recipient in order to verify the signatures
         RSAKey rsaPublicJWK = rsaJWK.toPublicJWK();
 
-        String token = generateToken();
+        String token = generateJwtToken();
         System.out.println("JWT token:" + token);
 
         return NimbusJwtDecoder.withPublicKey(rsaPublicJWK.toRSAPublicKey()).build();
     }
 
-    private String generateToken() throws JOSEException {
+    private String generateJwtToken() throws JOSEException {
         // Create RSA-signer with the private key
         JWSSigner signer = new RSASSASigner(rsaJWK);
 
@@ -76,7 +69,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject("ikane")
                 .issuer("https://ikane.org")
-                .expirationTime(new Date(new Date().getTime() + 60 * 1000 * 4))
+                .claim("uid-local", "123456789")
+                .expirationTime(Date.from(Instant.now().plus(4, ChronoUnit.HOURS)))
                 .build();
 
         SignedJWT signedJWT = new SignedJWT(
