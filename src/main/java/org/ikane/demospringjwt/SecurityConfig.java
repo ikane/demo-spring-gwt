@@ -84,7 +84,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
-    public RSAKey getRsaKey() throws JOSEException {
+    public RSAKey rsaKey() throws JOSEException {
         return new RSAKeyGenerator(2048)
                     .keyID("123")
                     .generate();
