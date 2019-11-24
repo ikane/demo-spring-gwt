@@ -25,6 +25,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private RSAKey rsaJWK;
 
+    @Autowired
+    private CustomJwtDecoder customJwtDecoder;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         //@formatter:off
