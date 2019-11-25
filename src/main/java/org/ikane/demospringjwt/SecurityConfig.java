@@ -61,7 +61,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         String token = generateJwtToken();
         System.out.println("JWT token:" + token);
 
-        return NimbusJwtDecoder.withPublicKey(rsaPublicJWK.toRSAPublicKey()).build();
+        //return NimbusJwtDecoder.withPublicKey(rsaPublicJWK.toRSAPublicKey()).build();
+        return customJwtDecoder;
     }
 
     private String generateJwtToken() throws JOSEException {
